@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Quantum Matrix — MP4 → GIF (Blue)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<style>
+/* ------------------------------
+   Quantum Matrix — Blue Edition
+   (Primary color: #007bff)
+   ------------------------------ */
+:root{
+  --bg-0:#02040a;
+  --bg-1:#041026;
+  --glass: rgba(255,255,255,0.03);
+  --muted: rgba(255,255,255,0.55);
+  --blue: #007bff;
+  --blue-2: #45a8ff;
+  --accent: var(--blue);
+  --danger:#ff4d6d;
+  --radius:14px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:
+  radial-gradient(900px 400px at 8% 12%, rgba(4,112,255,0.035), transparent 8%),
+  linear-gradient(180deg,var(--bg-0), var(--bg-1));
+  color:#dff6ff;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;overflow-y:auto}
+
+/* matrix canvas */
+#matrixCanvas{position:fixed;inset:0;z-index:0;pointer-events:none;mix-blend-mode:screen;opacity:0.85}
+
+/* container */
+.container { position:relative; z-index:1; max-width:1180px; margin:28px auto; padding:16px; }
+
+/* header */
+.header { display:flex;align-items:center;gap:14px;padding:12px;border-radius:14px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.02); box-shadow:0 12px 50px rgba(2,6,23,0.6); }
+.logo { width:66px;height:66px;border-radius:12px;background:linear-gradient(135deg,var(--blue-2),var(--blue));display:flex;align-items:center;justify-content:center;font-weight:900;font-family:var(--mono);color:#001523;font-size:20px;box-shadow:0 12px 40px rgba(0,123,255,0.12) }
+.title h1{margin:0;font-size:20px}
+.title p{margin:0;color:var(--muted);font-size:12px}
+
+/* grid */
+.grid { display:grid; grid-template-columns:1.1fr .9fr; gap:18px; margin-top:18px; }
+
+/* panel */
+.panel { background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent); padding:16px; border-radius:12px; border:1px solid rgba(255,255,255,0.02); box-shadow:0 12px 40px rgba(2,6,23,0.6); position:relative; overflow:hidden }
+.panel h2 { margin:0 0 8px 0; font-size:15px }
+
+/* drop */
+.drop { border-radius:12px; padding:18px; border:1px dashed rgba(69,144,255,0.08); min-height:160px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; transition:transform .18s, box-shadow .18s; cursor:pointer; background:linear-gradient(180deg, rgba(0,0,0,0.35), rgba(255,255,255,0.005)) }
+.drop.drag { transform:translateY(-6px); box-shadow:0 26px 60px rgba(0,0,0,0.6); border-color: rgba(0,123,255,0.22) }
+.big { font-weight:800; font-size:15px; color:#eaf8ff }
+.small { font-size:12px; color:var(--muted) }
+
+/* buttons */
+.btn { background:linear-gradient(90deg,var(--blue),var(--blue-2)); color:#001523; padding:10px 14px; border-radius:10px; border:none; font-weight:800; cursor:pointer; box-shadow:0 12px 40px rgba(4,112,255,0.08) }
+.btn.ghost { background:transparent; border:1px solid rgba(255,255,255,0.03); color:var(--muted); font-weight:700 }
+.btn.secondary { background:linear-gradient(90deg,#021329, rgba(255,255,255,0.02)); color:var(--blue-2); border:1px solid rgba(255,255,255,0.02) }
+
+/* file list */
+.file-list { margin-top:14px; display:flex; flex-direction:column; gap:10px; max-height:360px; overflow:auto; padding-right:6px }
+.file { display:flex; gap:12px; align-items:center; padding:10px; border-radius:10px; background:linear-gradient(90deg, rgba(255,255,255,0.01), transparent); border:1px solid rgba(255,255,255,0.02) }
+.thumb { width:96px; height:60px; border-radius:8px; background:linear-gradient(90deg,#001024, rgba(3,12,30,0.5)); display:flex; align-items:center; justify-content:center; font-family:var(--mono); color:var(--muted); font-size:12px }
+.meta { flex:1; min-width:0 }
+.name { font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.info { color:var(--muted); font-size:12px }
+
+/* controls right */
+.controls { display:flex; align-items:center; justify-content:space-between; gap:12px }
+.select { background:transparent; border:1px solid rgba(255,255,255,0.03); color:#dff; padding:8px 10px; border-radius:8px }
+
+/* progress */
+.progress { height:12px; border-radius:999px; background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); overflow:hidden; border:1px solid rgba(255,255,255,0.02) }
+.bar { height:100%; width:0; background:linear-gradient(90deg,var(--blue),var(--blue-2)); transition:width .18s linear; box-shadow:0 8px 30px rgba(69,184,255,0.08) inset }
+
+/* terminal */
+.terminal { font-family:var(--mono); font-size:12px; color:#d4f8ff; background:linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.25)); padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.02); min-height:80px; max-height:260px; overflow:auto }
+
+/* results */
+.results { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; margin-top:10px }
+.card { padding:8px; border-radius:8px; background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent); border:1px solid rgba(255,255,255,0.02); display:flex; flex-direction:column; gap:8px; align-items:center }
+.card img { width:100%; border-radius:6px; object-fit:cover }
+
+/* glitch title */
+.glitch { position:relative; display:inline-block; color:#cfe; font-weight:900; font-family:var(--mono) }
+.glitch::before, .glitch::after { content: attr(data-text); position:absolute; left:0; top:0; width:100%; overflow:hidden }
+.glitch::before{left:2px;text-shadow:-2px 0 var(--blue-2);clip-path:polygon(0 0,100% 0,100% 45%,0 45%);opacity:0.9}
+.glitch::after{left:-2px;text-shadow:2px 0 var(--blue);clip-path:polygon(0 55%,100% 55%,100% 100%,0 100%);opacity:0.9}
+
+/* overlay */
+.overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:9999; background:rgba(0,0,0,0.6) }
+.overlay .box { background:#071226; padding:14px 18px; border-radius:12px; color:#dff; font-family:var(--mono) }
+
+/* micro interactions */
+.btn:hover { transform:translateY(-4px); box-shadow:0 18px 50px rgba(4,112,255,0.12) }
+.file:hover { transform:translateY(-6px); box-shadow:0 18px 40px rgba(0,0,0,0.6) }
+
+/* responsive */
+@media(max-width:980px){ .grid{grid-template-columns:1fr} .logo{width:52px;height:52px} .header{flex-direction:column;align-items:flex-start} }
+</style>
+</head>
+<body>
+
+<canvas id="matrixCanvas" aria-hidden="true"></canvas>
+
+<div class="container" role="main" aria-label="Quantum Matrix MP4 to GIF">
+  <div class="header" role="banner">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="logo">QM</div>
+      <div class="title">
+        <h1><span class="glitch" data-text="Quantum Matrix">Quantum Matrix</span> — MP4 → GIF</h1>
+        <p>Processamento local. Privacidade. Visual futurista (tema azul).</p>
+      </div>
+    </div>
+
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button id="resetBtn" class="btn ghost" title="Resetar"><i class="fa-solid fa-rotate"></i>&nbsp;Reset</button>
+      <button id="helpBtn" class="btn" title="Ajuda rápida"><i class="fa-regular fa-circle-question"></i>&nbsp;Ajuda</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- left -->
+    <div class="panel" aria-labelledby="upload">
+      <div id="drop" class="drop" role="region" aria-label="Drop zone">
+        <div class="big"><i class="fa-solid fa-cloud-arrow-up" style="margin-right:8px"></i> Arraste, solte ou toque</div>
+        <div class="small">Apenas .mp4 — múltiplos suportados. Processamento totalmente local (FFmpeg no teu domínio).</div>
+        <input id="fileInput" type="file" accept="video/mp4" multiple style="display:none">
+        <div style="margin-top:12px"><button id="chooseBtn" class="btn">Selecionar ficheiros</button></div>
+      </div>
+
+      <div class="file-list" id="fileList" aria-live="polite"></div>
+
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <label style="color:var(--muted);font-size:13px">Preset</label>
+        <select id="preset" class="select" aria-label="Preset">
+          <option value="fast">Rápido — 8 fps · 360px</option>
+          <option value="balanced" selected>Equilíbrio — 12 fps · 480px</option>
+          <option value="quality">Qualidade — 18 fps · 720px</option>
+        </select>
+
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button id="convertBtn" class="btn" disabled><i class="fa-solid fa-magic"></i>&nbsp;Converter</button>
+          <button id="downloadZipBtn" class="btn ghost" disabled><i class="fa-solid fa-file-zipper"></i>&nbsp;ZIP</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- right -->
+    <div class="panel" aria-labelledby="controls">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:900">Estado</div>
+          <div style="color:var(--muted);font-size:13px">Progresso do motor e das conversões</div>
+        </div>
+        <div id="status" style="font-weight:800;color:var(--blue)">Aguardando</div>
+      </div>
+
+      <div style="margin-top:12px" class="progress"><div id="bar" class="bar" style="width:0%"></div></div>
+
+      <div style="margin-top:12px" class="terminal" id="terminal">Console vazio. Inicie conversão para ver o log.</div>
+
+      <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:900">Resultados (<span id="count">0</span>)</div>
+        <div style="color:var(--muted);font-size:13px">Baixar ou visualizar</div>
+      </div>
+
+      <div class="results" id="results"></div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:18px;color:var(--muted);font-size:13px">
+    Quantum Matrix — Privacidade & Performance. Mantém no root: <code>ffmpeg.min.js</code>, <code>ffmpeg-core.js</code>, <code>ffmpeg-core.wasm</code>, <code>ffmpeg-core.worker.js</code>.
+  </div>
+</div>
+
+<!-- overlay -->
+<div id="overlay" class="overlay" aria-hidden="true">
+  <div class="box" id="overlayBox">A carregar...</div>
+</div>
+
+<!-- Local UMD: must exist in repo root -->
+<script src="./ffmpeg.min.js"></script>
+<!-- JSZip (optional, for ZIP download) -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+<script>
+/* Quantum Matrix — Final Blue Edition
+   - Local FFmpeg (ffmpeg.min.js + ffmpeg-core.* files)
+   - MP4 -> GIF conversion
+   - Matrix background
+*/
+
+(() => {
+  /* ---------- Matrix background ---------- */
+  const canvas = document.getElementById('matrixCanvas');
+  const ctx = canvas.getContext('2d');
+  let cols = 0, rows = 0, fontSize = Math.max(12, Math.floor(window.innerWidth / 120));
+  let drops = [];
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    fontSize = Math.max(12, Math.floor(window.innerWidth / 120));
+    cols = Math.floor(canvas.width / fontSize);
+    rows = Math.floor(canvas.height / fontSize);
+    drops = new Array(cols).fill(0).map(() => Math.floor(Math.random() * rows));
+  }
+  function loop() {
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.font = fontSize + 'px monospace';
+    for (let i=0;i<cols;i++) {
+      const ch = String.fromCharCode(0x30A0 + Math.random() * 96);
+      ctx.fillStyle = i % 2 ? 'rgba(69,144,255,0.5)' : 'rgba(0,123,255,0.5)';
+      ctx.fillText(ch, i * fontSize, drops[i] * fontSize);
+      if (drops[i] * fontSize > canvas.height || Math.random() > 0.98) drops[i] = 0;
+      drops[i]++;
+    }
+    requestAnimationFrame(loop);
+  }
+  window.addEventListener('resize', () => { resize(); });
+  resize(); loop();
+
+  /* ---------- Elements ---------- */
+  const fileInput = document.getElementById('fileInput');
+  const chooseBtn = document.getElementById('chooseBtn');
+  const dropEl = document.getElementById('drop');
+  const fileList = document.getElementById('fileList');
+  const preset = document.getElementById('preset');
+  const convertBtn = document.getElementById('convertBtn');
+  const downloadZipBtn = document.getElementById('downloadZipBtn');
+  const bar = document.getElementById('bar');
+  const status = document.getElementById('status');
+  const terminal = document.getElementById('terminal');
+  const results = document.getElementById('results');
+  const countEl = document.getElementById('count');
+  const overlay = document.getElementById('overlay');
+  const overlayBox = document.getElementById('overlayBox');
+  const resetBtn = document.getElementById('resetBtn');
+  const helpBtn = document.getElementById('helpBtn');
+
+  /* ---------- State ---------- */
+  const state = { files: [], gifs: [], ffmpeg: null, loaded:false, converting:false };
+
+  const PRESETS = {
+    fast: { fps:8, width:360, duration:20 },
+    balanced: { fps:12, width:480, duration:20 },
+    quality: { fps:18, width:720, duration:30 }
+  };
+
+  // helpers
+  const uid = (n=6) => Math.random().toString(36).slice(2,2+n);
+  const fmt = (b) => { if(!b && b !== 0) return '-'; const s=['B','KB','MB','GB']; if(b===0) return '0 B'; const i=Math.floor(Math.log(b)/Math.log(1024)); return (b/Math.pow(1024,i)).toFixed(i===0?0:1)+' '+s[i]; };
+  function log(msg){ const d = document.createElement('div'); d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`; terminal.appendChild(d); terminal.scrollTop = terminal.scrollHeight; }
+
+  function showOverlay(txt){ overlayBox.textContent = txt; overlay.style.display='flex'; overlay.setAttribute('aria-hidden','false'); }
+  function hideOverlay(){ overlay.style.display='none'; overlay.setAttribute('aria-hidden','true'); }
+
+  /* ---------- File handling ---------- */
+  chooseBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => handleFiles(e.target.files));
+  ['dragenter','dragover'].forEach(ev => dropEl.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(ev => dropEl.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.remove('drag'); }));
+  dropEl.addEventListener('drop', e => { e.preventDefault(); if(e.dataTransfer?.files) handleFiles(e.dataTransfer.files); });
+
+  function handleFiles(list) {
+    const arr = Array.from(list || []);
+    let added = 0;
+    for(const f of arr) {
+      if(!f.type.includes('video') && !f.name.toLowerCase().endsWith('.mp4')) continue;
+      const id = uid(8);
+      const url = URL.createObjectURL(f);
+      state.files.push({ id, file: f, name: f.name, size: f.size, url });
+      added++;
+    }
+    if(added) log(`Adicionados ${added} ficheiro(s).`);
+    renderFileList();
+  }
+
+  function renderFileList() {
+    fileList.innerHTML = '';
+    if(!state.files.length) { fileList.innerHTML = `<div style="color:var(--muted)">Nenhum ficheiro seleccionado.</div>`; convertBtn.disabled = true; return; }
+    state.files.forEach((f, idx) => {
+      const el = document.createElement('div'); el.className='file';
+      const thumb = document.createElement('div'); thumb.className='thumb'; thumb.textContent='MP4';
+      const meta = document.createElement('div'); meta.className='meta';
+      const name = document.createElement('div'); name.className='name'; name.textContent = f.name;
+      const info = document.createElement('div'); info.className='info'; info.innerHTML = `<span>${fmt(f.size)}</span><span>• MP4</span><span style="color:var(--muted);font-family:var(--mono);font-size:11px">${f.id}</span>`;
+      meta.appendChild(name); meta.appendChild(info);
+      const actions = document.createElement('div'); actions.style.display='flex'; actions.style.gap='8px';
+      const preview = document.createElement('button'); preview.className='btn ghost'; preview.innerHTML='<i class="fa-regular fa-circle-play"></i>'; preview.title='Preview';
+      preview.addEventListener('click', () => openPreview(f));
+      const remove = document.createElement('button'); remove.className='btn ghost'; remove.innerHTML='<i class="fa-solid fa-trash"></i>'; remove.title='Remover';
+      remove.addEventListener('click', () => { URL.revokeObjectURL(f.url); state.files.splice(idx,1); renderFileList(); });
+      actions.appendChild(preview); actions.appendChild(remove);
+      el.appendChild(thumb); el.appendChild(meta); el.appendChild(actions);
+      fileList.appendChild(el);
+    });
+    convertBtn.disabled = state.files.length === 0;
+  }
+
+  // preview overlay
+  let preview = null;
+  function openPreview(entry) {
+    if(preview) closePreview();
+    const ov = document.createElement('div'); ov.style.position='fixed'; ov.style.inset='0'; ov.style.background='rgba(0,0,0,0.9)'; ov.style.display='flex'; ov.style.alignItems='center'; ov.style.justifyContent='center'; ov.style.zIndex=9999;
+    const card = document.createElement('div'); card.style.width='min(92vw,760px)'; card.style.borderRadius='10px'; card.style.overflow='hidden'; card.style.background='#000';
+    const header = document.createElement('div'); header.style.padding='8px'; header.style.display='flex'; header.style.justifyContent='space-between';
+    const title = document.createElement('div'); title.style.color='#cff'; title.textContent = entry.name;
+    const closeBtn = document.createElement('button'); closeBtn.className='btn ghost'; closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>'; closeBtn.onclick = closePreview;
+    header.appendChild(title); header.appendChild(closeBtn);
+    const body = document.createElement('div'); body.style.padding='8px';
+    const video = document.createElement('video'); video.src = entry.url; video.controls = true; video.style.width='100%'; video.autoplay = true;
+    body.appendChild(video);
+    card.appendChild(header); card.appendChild(body); ov.appendChild(card);
+    document.body.appendChild(ov); preview = ov;
+    ov.addEventListener('click', (e) => { if(e.target === ov) closePreview(); });
+  }
+  function closePreview(){ if(preview){ preview.remove(); preview=null; } }
+
+  /* ---------- FFmpeg integration (local) ---------- */
+  async function ensureFFmpeg() {
+    if(state.loaded && state.ffmpeg) return state.ffmpeg;
+    if(!window.FFmpeg || !FFmpeg.createFFmpeg) throw new Error('FFmpeg UMD não encontrado. Verifica ffmpeg.min.js no root.');
+    // create with local corePath
+    const ffmpeg = FFmpeg.createFFmpeg({ corePath: './ffmpeg-core.js', log: true });
+    showOverlay('A carregar motor FFmpeg (local) — isto pode demorar alguns segundos...');
+    log('[FFmpeg] Inicializando...');
+    // progress while loading core
+    ffmpeg.setProgress(({ ratio }) => {
+      const p = Math.round(ratio * 100);
+      bar.style.width = p + '%';
+      status.textContent = `Carregando recursos — ${p}%`;
+    });
+    await ffmpeg.load();
+    state.ffmpeg = ffmpeg;
+    state.loaded = true;
+    hideOverlay();
+    log('[FFmpeg] Motor carregado.');
+    return ffmpeg;
+  }
+
+  // convert files
+  convertBtn.addEventListener('click', async () => {
+    if(!state.files.length || state.converting) return;
+    const sel = preset.value || 'balanced';
+    const presetParams = PRESETS[sel] || PRESETS.balanced;
+    try {
+      await ensureFFmpeg();
+    } catch (err) {
+      alert('Erro ao carregar FFmpeg: ' + (err.message || err)); console.error(err); return;
+    }
+
+    state.converting = true;
+    convertBtn.disabled = true;
+    downloadZipBtn.disabled = true;
+    results.innerHTML = '';
+    terminal.innerHTML = '';
+    log(`Iniciando conversão de ${state.files.length} ficheiro(s) — preset: ${sel}`);
+
+    // attach logs
+    state.ffmpeg.setLogger(({ type, message }) => {
+      if(message && message.trim()) log('[ffmpeg] ' + message);
+    });
+
+    const ffFetch = FFmpeg.fetchFile || (async (f) => new Uint8Array(await f.arrayBuffer()));
+    const total = state.files.length;
+    let done = 0;
+
+    for(let i=0;i<state.files.length;i++){
+      const entry = state.files[i];
+      const nameBase = entry.name.replace(/\.[^/.]+$/, '');
+      const inName = `in_${uid(6)}.mp4`;
+      const outName = `out_${uid(6)}.gif`;
+      log(`Processando: ${entry.name}`);
+      try {
+        const data = await ffFetch(entry.file);
+        state.ffmpeg.FS('writeFile', inName, data);
+
+        state.ffmpeg.setProgress(({ ratio }) => {
+          const perc = Math.round(ratio * 100);
+          bar.style.width = `${Math.round(((done + perc/100) / total) * 100)}%`;
+          status.textContent = `Convertendo ${i+1}/${total} — ${Math.round(((done + perc/100)/total)*100)}%`;
+        });
+
+        const vf = `fps=${presetParams.fps},scale=${presetParams.width}:-1:flags=lanczos`;
+        const args = ['-i', inName, '-vf', vf, '-t', String(presetParams.duration), '-y', outName];
+        log(`[ffmpeg] run ${args.join(' ')}`);
+        await state.ffmpeg.run(...args);
+
+        const outData = state.ffmpeg.FS('readFile', outName);
+        try{ state.ffmpeg.FS('unlink', inName); }catch(e){}
+        try{ state.ffmpeg.FS('unlink', outName); }catch(e){}
+
+        const blob = new Blob([outData.buffer], { type:'image/gif' });
+        const url = URL.createObjectURL(blob);
+        const gifName = `${nameBase}.gif`;
+        state.gifs.push({ name: gifName, blob, url, size: blob.size });
+        renderResults();
+        done++;
+        bar.style.width = `${Math.round((done/total)*100)}%`;
+        status.textContent = `Concluído ${done}/${total}`;
+        log(`Gerado: ${gifName} (${fmt(blob.size)})`);
+      } catch (err) {
+        log('Erro: ' + (err.message || err));
+        console.error(err);
+      }
+    }
+
+    state.converting = false;
+    convertBtn.disabled = false;
+    downloadZipBtn.disabled = state.gifs.length === 0;
+    status.textContent = 'Concluído';
+    log('Conversões terminadas.');
+  });
+
+  function renderResults() {
+    results.innerHTML = '';
+    if(!state.gifs.length){ results.innerHTML = `<div style="color:var(--muted)">Sem GIFs.</div>`; countEl.textContent='0'; return; }
+    countEl.textContent = String(state.gifs.length);
+    state.gifs.forEach((g, idx) => {
+      const card = document.createElement('div'); card.className='card';
+      const img = document.createElement('img'); img.src = g.url; img.alt = g.name;
+      const title = document.createElement('div'); title.style.fontWeight='800'; title.textContent = g.name;
+      const info = document.createElement('div'); info.style.fontSize='12px'; info.style.color='var(--muted)'; info.textContent = fmt(g.size);
+      const actions = document.createElement('div'); actions.style.display='flex'; actions.style.gap='8px'; actions.style.width='100%';
+      const dl = document.createElement('a'); dl.className='btn'; dl.textContent='Baixar'; dl.href = g.url; dl.download = g.name; dl.style.flex='1';
+      const open = document.createElement('a'); open.className='btn ghost'; open.textContent='Abrir'; open.href = g.url; open.target='_blank'; open.style.flex='1';
+      actions.appendChild(dl); actions.appendChild(open);
+      card.appendChild(img); card.appendChild(title); card.appendChild(info); card.appendChild(actions);
+      results.appendChild(card);
+    });
+  }
+
+  // ZIP download
+  downloadZipBtn.addEventListener('click', async () => {
+    if(!state.gifs.length) return;
+    if(typeof JSZip === 'undefined') { alert('JSZip não disponível. Faça download individual.'); return; }
+    showOverlay('A criar ZIP...');
+    const zip = new JSZip();
+    const fld = zip.folder('gifs') || zip;
+    state.gifs.forEach(g => fld.file(g.name, g.blob));
+    const content = await zip.generateAsync({ type:'blob' }, (meta) => { bar.style.width = `${Math.round(meta.percent)}%`; });
+    hideOverlay();
+    const u = URL.createObjectURL(content);
+    const a = document.createElement('a'); a.href = u; a.download = 'gifs-quantum.zip'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(u),2000);
+  });
+
+  // reset/help
+  resetBtn.addEventListener('click', () => {
+    if(!confirm('Resetar aplicação?')) return;
+    state.files.forEach(f => URL.revokeObjectURL(f.url));
+    state.gifs.forEach(g => URL.revokeObjectURL(g.url));
+    state.files=[]; state.gifs=[]; renderFileList(); renderResults();
+    terminal.innerHTML = 'Console vazio. Inicie conversão para ver o log.'; bar.style.width='0%'; status.textContent='Aguardando';
+  });
+  helpBtn.addEventListener('click', () => {
+    alert('Quantum Matrix — Guia rápido:\\n1) Adicione MP4(s)\\n2) Escolha preset\\n3) Converter (tudo no browser)\\n4) Baixe GIFs ou ZIP\\n\\nNota: ffmpeg files devem estar no root (ffmpeg.min.js, ffmpeg-core.js, ffmpeg-core.wasm, ffmpeg-core.worker.js).');
+  });
+
+  // initial check for core files
+  (async () => {
+    try {
+      const r = await fetch('./ffmpeg-core.js', { method:'HEAD' });
+      if(!r.ok) log('Aviso: ffmpeg-core.js não encontrado no root. Use workflow ou faça upload manual.');
+      else log('ffmpeg-core.js disponível localmente.');
+      // also verify wasm accessible
+      const r2 = await fetch('./ffmpeg-core.wasm', { method:'HEAD' });
+      if(!r2.ok) log('Aviso: ffmpeg-core.wasm não encontrado (404).');
+      else log('ffmpeg-core.wasm disponível localmente.');
+    } catch(e) {
+      log('Aviso: falha ao verificar ficheiros core (fetch HEAD). Pode ainda funcionar se ficheiros existirem.');
+    }
+  })();
+
+  // expose for debug
+  window.QuantumMatrix = { state };
+})();
+</script>
+</body>
+</html>
