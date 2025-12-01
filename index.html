@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<title>MP4 → GIF Converter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:sans-serif;background:#0a0a0f;color:#fff;margin:0;padding:20px;}
+h1{text-align:center;font-size:22px;}
+#drop{border:2px dashed #5af;color:#5af;padding:30px;text-align:center;border-radius:10px;}
+#list, #results{margin-top:20px;}
+.item, .gif{background:#111;padding:10px;border-radius:8px;margin-bottom:8px;}
+button{padding:8px 14px;border:none;border-radius:6px;background:#5af;color:#000;font-weight:bold;}
+button:disabled{opacity:0.4;}
+</style>
+</head>
+<body>
+<h1>MP4 → GIF Converter</h1>
+
+<div id="drop">
+  Toque ou arraste vídeos MP4 aqui<br><br>
+  <input type="file" id="fileInput" accept="video/mp4" multiple style="display:none">
+  <button onclick="fileInput.click()">Selecionar ficheiros</button>
+</div>
+
+<div id="list"></div>
+
+<button id="convertBtn" disabled onclick="convertAll()">Converter para GIF</button>
+
+<h2>Resultados</h2>
+<div id="results"></div>
+
+<!-- FFmpeg -->
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/ffmpeg.min.js"></script>
+
+<script>
+const files=[];
+const list=document.getElementById("list");
+const results=document.getElementById("results");
+const convertBtn=document.getElementById("convertBtn");
+
+fileInput.onchange=e=>addFiles(e.target.files);
+
+function addFiles(fs){
+  for(const f of fs){
+    if(f.type!=='video/mp4') continue;
+    files.push(f);
+  }
+  renderList();
+}
+
+function renderList(){
+  list.innerHTML="";
+  if(files.length===0){convertBtn.disabled=true;return;}
+  files.forEach(f=>{
+    const d=document.createElement("div");
+    d.className="item";
+    d.textContent=f.name+" ("+Math.round(f.size/1024/1024)+"MB)";
+    list.appendChild(d);
+  });
+  convertBtn.disabled=false;
+}
+
+async function convertAll(){
+  convertBtn.disabled=true;
+  const {createFFmpeg, fetchFile}=FFmpeg;
+  const ffmpeg=createFFmpeg({
+    corePath:"https://unpkg.com/@ffmpeg/core@0.12.10/dist/ffmpeg-core.js",
+    log:false
+  });
+  await ffmpeg.load();
+
+  results.innerHTML="";
+
+  for(const f of files){
+    ffmpeg.FS("writeFile","input.mp4",await fetchFile(f));
+    await ffmpeg.run("-i","input.mp4","-vf","fps=12,scale=360:-1:flags=lanczos","out.gif");
+    const data=ffmpeg.FS("readFile","out.gif");
+    const blob=new Blob([data.buffer],{type:"image/gif"});
+    const url=URL.createObjectURL(blob);
+
+    const d=document.createElement("div");
+    d.className="gif";
+    d.innerHTML=`<strong>${f.name.replace(".mp4","")}.gif</strong><br><img src="${url}" style="max-width:100%;border-radius:6px;margin-top:6px">`;
+    results.appendChild(d);
+
+    ffmpeg.FS("unlink","input.mp4");
+    ffmpeg.FS("unlink","out.gif");
+  }
+}
+</script>
+</body>
+</html>
