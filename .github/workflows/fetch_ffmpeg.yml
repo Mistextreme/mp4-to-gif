@@ -1,28 +1,43 @@
 name: Fetch FFmpeg core
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
-  workflow_dispatch:
+
 jobs:
   fetch:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download ffmpeg core files
         run: |
           CORE_VER="0.12.10"
           BASE="https://unpkg.com/@ffmpeg/core@${CORE_VER}/dist"
+
           echo "Downloading from $BASE"
+
           curl -sSL -o ffmpeg-core.js "${BASE}/ffmpeg-core.js"
           curl -sSL -o ffmpeg-core.wasm "${BASE}/ffmpeg-core.wasm"
-          # worker is optional
           curl -sSL -o ffmpeg-core.worker.js "${BASE}/ffmpeg-core.worker.js" || true
+
       - name: Commit files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
           git add ffmpeg-core.js ffmpeg-core.wasm ffmpeg-core.worker.js || true
-          git commit -m "Add ffmpeg core files (automated)" || echo "No changes to commit"
+
+          # IMPORTANT: Update repo before pushing
+          git pull --rebase || true
+
+          git commit -m "Add FFmpeg core files (automated)" || echo "No changes to commit"
+
           git push
